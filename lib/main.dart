@@ -1,13 +1,26 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'dart:async' show Future;
+import 'package:flutter/services.dart' show rootBundle;
 
 import 'package:flutter/material.dart';
 
-void main() => runApp(MyApp());
+void main() async{
+  List<person> mydata = List();
+
+  for(int i=0;i<8;i++){
+    mydata.add(await loadPersonList(no: i) as person);
+  }
+  runApp(MyApp(mydata: mydata));
+}
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
+
+  List<person> mydata;
+
+  MyApp({this.mydata});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -19,13 +32,17 @@ class MyApp extends StatelessWidget {
         appBar: new AppBar(
           title: Text("Home"),
         ),
-        body: MyHomePage()
+        body: MyHomePage(mydata: mydata)
       ),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
+
+  List<person> mydata;
+
+  MyHomePage({this.mydata});
 
   @override
   _MyHomePageState createState() => _MyHomePageState();
@@ -40,109 +57,106 @@ class _MyHomePageState extends State<MyHomePage> {
   var updatedData;
 
   @override
+  void initState() {
+    super.initState();
+    updatedData = widget.mydata;
+    print(updatedData);
+  }
+
+  @override
   Widget build(BuildContext context) {
     // TODO: implement build
     return new Container(
-      child: new FutureBuilder(
-        future: DefaultAssetBundle.of(context).loadString('load_json/person.json'),
-        builder: (context, snapshot){
-          var mydata=updatedData = json.decode(snapshot.data.toString());
+      child: new ListView.builder(
+                itemBuilder: (BuildContext context, int index){
 
-          return new ListView.builder(
-            itemBuilder: (BuildContext context, int index){
-
-              if(index>=updatedData.length){
-                return new Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
+                if(index<=7){
+                    return new Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
                     new RaisedButton(
-                      onPressed: ()
-                        {
-                          return performOperation(context,index,mydata);
-                      },
-                      child: new Text("${operation[index-updatedData.length]}"),)
-                  ],
+                    onPressed: ()
+                    {
+                    return performOperation(context,index,updatedData);
+                    },
+                    child: new Text("${operation[index]}"),)
+                    ],
 
                     );
-              }else{
+                }else{
 
-                return ListTile(
-                  title: new Text(""+updatedData[index]['name']),
-                  subtitle: new Text("Age: ${updatedData[index]['age']}"),
-                  leading: new Text(""+updatedData[index]['gender']),
-                  );}
-            },
-            itemCount: updatedData == null ? 0 :updatedData.length+8,
-          );
-        },
-      ),
+                    return ListTile(
+                      title: new Text(""+updatedData[index-8].name),
+                      subtitle: new Text("Age: ${updatedData[index-8].age}"),
+                      leading: new Text(""+updatedData[index-8].gender),
+                    );}
+                  },
+                itemCount: updatedData == null ? 0 :updatedData.length+8,
+            )
 
-        /*new Card(
-          child: new Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              new Text("Index: $index"),
-              new Text("Name: "+mydata[index]['name']),
-              new Text("Age: ${mydata[index]['age']}"),
-              new Text("Gender: "+mydata[index]['gender']),
-            ],
-          ),
-        )*/
+
 
     );
 
   }
 
-  performOperation(BuildContext context,int choice, var mydata){
+  performOperation(BuildContext context,int choice, var mydata) async{
+
     switch(choice){
 
-      case 8:
+      case 0:
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => sortJson(mydata)),
         );
         break;
 
-      case 9:
+      case 1:
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => filterJson(mydata)),
         );
         break;
 
-      case 10:
+      case 2:
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => mapJson(mydata)),
         );
         break;
 
-      case 11:
+      case 3:
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => printKeys(mydata)),
         );
         break;
 
-      case 12:
+      case 4:
         _displayDialog(context,mydata);
         break;
 
-      case 13:
+      case 5:
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => reverseJson(mydata)),
         );
         break;
 
-      case 14:
-        Navigator.push(
+      case 6:
+        final result=await Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => addJson()),
+          MaterialPageRoute(builder: (context) => addJson(mydata: mydata)),
         );
+        print(result);
+
+        setState(() {
+          updatedData=result;
+        });
+
         break;
 
-      case 15:
+      case 7:
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => cardUI(mydata)),
@@ -192,6 +206,19 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
 }
+
+Future<String> _loadAPersonAsset() async {
+  return await rootBundle.loadString('load_json/person.json');
+}
+
+Future<person> loadPersonList({int no}) async {
+
+  String jsonString = await _loadAPersonAsset();
+  final jsonResponse = json.decode(jsonString);
+
+  return new person.fromJsonData(jsonResponse[no]);
+}
+
 class sortJson extends StatelessWidget {
 
   var mydata;
@@ -214,9 +241,9 @@ class sortJson extends StatelessWidget {
                 child: new Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    new Text("Name: "+sorted[index]['name']),
-                    new Text("Age: ${sorted[index]['age']}"),
-                    new Text("Gender: "+sorted[index]['gender']),
+                    new Text("Name: "+sorted[index].name),
+                    new Text("Age: ${sorted[index].age}"),
+                    new Text("Gender: "+sorted[index].gender),
                   ],
                 ),
               );
@@ -234,7 +261,7 @@ class sortJson extends StatelessWidget {
     {
       for (int j = i + 1; j < ageList.length; j++)
       {
-        if (  ageList[i]['age'] > ageList[j]['age'])
+        if (  ageList[i].age > ageList[j].age)
         {
           temp = ageList[i];
           ageList[i] = ageList[j];
@@ -350,9 +377,9 @@ class _filterJsonState extends State<filterJson> {
                 child: new Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    new Text("Name: "+modifydata[index-1]['name']),
-                    new Text("Age: ${modifydata[index-1]['age']}"),
-                    new Text("Gender: "+modifydata[index-1]['gender']),
+                    new Text("Name: "+modifydata[index-1].name),
+                    new Text("Age: ${modifydata[index-1].age}"),
+                    new Text("Gender: "+modifydata[index-1].gender),
                   ],
                 ),
               );}
@@ -368,7 +395,7 @@ class _filterJsonState extends State<filterJson> {
     var malelist=List();
     setState(() {
       for(var data in mydata){
-        if(data['gender']=="Male"){
+        if(data.gender.toUpperCase()=="MALE"){
           malelist.add(data);
         }
       }
@@ -379,7 +406,7 @@ class _filterJsonState extends State<filterJson> {
     var femalelist=List();
     setState(() {
       for(var data in mydata){
-        if(data['gender']=="Female"){
+        if(data.gender.toUpperCase()=="FEMALE"){
           femalelist.add(data);
         }
       }
@@ -390,7 +417,7 @@ class _filterJsonState extends State<filterJson> {
     var agelist=List();
     setState(() {
       for(var data in mydata){
-        if(data['age']>=20){
+        if(data.age>=20){
           agelist.add(data);
         }
       }
@@ -401,7 +428,7 @@ class _filterJsonState extends State<filterJson> {
     var agelist=List();
     setState(() {
       for(var data in mydata){
-        if(data['age']<20){
+        if(data.age<20){
           agelist.add(data);
         }
       }
@@ -414,19 +441,22 @@ class _filterJsonState extends State<filterJson> {
 class mapJson extends StatelessWidget {
 
   var mydata;
+  var personName;
+
+  person newPerson=new person();
   mapJson(var mydata){ this.mydata=mydata; }
   @override
   Widget build(BuildContext context) {
 
-    var person1 = person.fromJson(mydata[0]);
+    personName=newPerson.nameMap(mydata);
     return Container(
       child: new Card(
         child: new Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          new Text("Name: ${person1.name}"),
-          new Text("Age: ${person1.age}"),
-          new Text("Gender: ${person1.gender}"),
+          SafeArea(
+            child: new Text("Name: ${personName}"),
+          ),
     ],
     ),
     ),
@@ -445,7 +475,7 @@ class printKeys extends StatelessWidget {
         appBar: new AppBar(
           title: new Text("Print Keys"),
         ),
-        body: Text("Keys Are: "+mydata[0].keys.toString()),
+        body: Text("Keys Are: "+mydata[0].totalKeys.toString()),
       ),
     );
   }
@@ -455,12 +485,12 @@ class findObject extends StatelessWidget {
 
   var mydata;
   String name='';
-  List<String> nameList=new List(8);
+  List<String> nameList=new List();
   findObject(String name,var mydata){
     this.mydata=mydata;
-    this.name=name;
-    for(int i=0;i<8;i++){
-      nameList[i] = mydata[i]['name'].toString();
+    this.name=name.toUpperCase();
+    for(int i=0;i<mydata.length;i++){
+      nameList.add(mydata[i].name.toUpperCase());
     }
   }
 
@@ -477,9 +507,9 @@ class findObject extends StatelessWidget {
             child: new Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                new Text("Name: "+mydata[index]['name']),
-                new Text("Age: ${mydata[index]['age']}"),
-                new Text("Gender: "+mydata[index]['gender']),
+                new Text("Name: "+mydata[index].name),
+                new Text("Age: ${mydata[index].age}"),
+                new Text("Gender: "+mydata[index].gender),
               ],
             ),
       ),
@@ -501,9 +531,10 @@ class findObject extends StatelessWidget {
 class reverseJson extends StatelessWidget {
 
   var mydata;
-  var rmydata=new List(8);
+  var rmydata;
   reverseJson(var mydata) {
     this.mydata=mydata;
+    rmydata=new List(mydata.length);
     reverse();
   }
   @override
@@ -520,9 +551,9 @@ class reverseJson extends StatelessWidget {
                 child: new Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    new Text("Name: "+rmydata[index]['name']),
-                    new Text("Age: ${rmydata[index]['age']}"),
-                    new Text("Gender: "+rmydata[index]['gender']),
+                    new Text("Name: "+rmydata[index].name),
+                    new Text("Age: ${rmydata[index].age}"),
+                    new Text("Gender: "+rmydata[index].gender),
                   ],
                 ),
               );
@@ -546,18 +577,19 @@ class reverseJson extends StatelessWidget {
 
 class addJson extends StatefulWidget {
 
+  List<person> mydata;
+
+  addJson({this.mydata});
+
   @override
-  _addJsonState createState() => _addJsonState();
+  _addJsonState createState() => _addJsonState(mydata: mydata);
 }
 
 class _addJsonState extends State<addJson> {
 
+  List<person> mydata;
 
-  File jsonfile;
-  Directory dir;
-  String filename = 'person.json';
-  bool fileexists = false;
-  Map<String, dynamic> filecontent;
+  _addJsonState({this.mydata});
 
   TextEditingController valueInputController = new TextEditingController();
   TextEditingController valueInputController1 = new TextEditingController();
@@ -566,57 +598,22 @@ class _addJsonState extends State<addJson> {
 
   void initState() {
     super.initState();
-
-    getApplicationDocumentsDirectory().then((Directory directory) {
-      dir = directory;
-
-      jsonfile = new File(dir.path + "/" + filename);
-      print("Directory=" + jsonfile.path);
-      fileexists = jsonfile.existsSync();
-      if (fileexists) this.setState(() => filecontent = json.decode(jsonfile.readAsStringSync()));
-     else{
-       print("File not Exists First Time");
-     }
-    });
   }
 
 
   addObj(String pname, String page, String pgender){
 
-    print("Writing in File");
-    Map<String,dynamic> content={
-      "name": pname,
-      "age" : page,
-      "gender" : pgender
-    };
-    if(fileexists) {
-      print("File Exists");
-      Map<String, dynamic> jsonfilecontent=json.decode(jsonfile.readAsStringSync());
-      jsonfilecontent.addAll(content);
-      jsonfile.writeAsStringSync(json.encode(jsonfilecontent));
+    setState(() {
+      print("Writing in File");
+
+      int age = int.parse(page);
+
+      person newPerson = new person(name: pname,age: age, gender: pgender);
+      mydata.add(newPerson);
       print("Added Successfully");
-
-      filecontent = json.decode(jsonfile.readAsStringSync());
-    } else{
-
-      getApplicationDocumentsDirectory().then((Directory directory){
-        dir = directory;
-
-        print("Directory1="+dir.path);
-        createFile(content, dir, filename);
-      });
-
-    }
-    this.setState(() => filecontent = json.decode(jsonfile.readAsStringSync()));
-  }
-
-  void createFile(Map<String, dynamic> content, Directory dir, String fileName) {
-    print("Creating file!");
-    File file = new File(dir.path + "/" + fileName);
-    file.createSync();
-    fileexists = true;
-    file.writeAsStringSync(json.encode(content));
-    print("Its Done");
+      print(mydata);
+      _onBackPressed(mydata,context);
+    });
   }
 
   @override
@@ -630,9 +627,6 @@ class _addJsonState extends State<addJson> {
 
   @override
   Widget build(BuildContext context) {
-    String name = '';
-    int age=0;
-    String gender = '';
 
     return Container(
       child: new Scaffold(
@@ -653,14 +647,19 @@ class _addJsonState extends State<addJson> {
                   controller: valueInputController2,
                 ),
                 new RaisedButton(onPressed: ()=>addObj(valueInputController.text,valueInputController1.text,valueInputController2.text), child: new Text("Add")),
-                new Text("File content: ", style: new TextStyle(fontWeight: FontWeight.bold),),
-                new Text(filecontent.toString())
+
               ],
 
             )
+        ),
         )
-      ),
+
     );
+  }
+
+  _onBackPressed(var mydata1, BuildContext context){
+    Navigator.pop(context, mydata1);
+
   }
 
 }
@@ -694,9 +693,9 @@ class cardUI extends StatelessWidget {
                                     child: Column(
                                       children: <Widget>[
                                         new Text(""),
-                                        new Text("Name: "+mydata[index*2]['name']),
-                                        new Text("Age: ${mydata[index*2]['age']}"),
-                                        new Text("Gender: "+mydata[index*2]['gender']),
+                                        new Text("Name: "+mydata[index*2].name),
+                                        new Text("Age: ${mydata[index*2].age}"),
+                                        new Text("Gender: "+mydata[index*2].gender),
                                       ],
                                     ),
                                   )
@@ -716,9 +715,9 @@ class cardUI extends StatelessWidget {
                                     crossAxisAlignment: CrossAxisAlignment.center,
                                     children: <Widget>[
                                       new Text(""),
-                                      new Text("Name: "+mydata[index*2+1]['name']),
-                                      new Text("Age: ${mydata[index*2+1]['age']}"),
-                                      new Text("Gender: "+mydata[index*2+1]['gender']),
+                                      new Text("Name: "+mydata[index*2+1].name),
+                                      new Text("Age: ${mydata[index*2+1].age}"),
+                                      new Text("Gender: "+mydata[index*2+1].gender),
                                     ]
                                 ),),)))
                 ]);
@@ -733,10 +732,27 @@ class person{
   int age;
   String gender;
 
+  var totalKeys;
+
   person({this.name,this.age, this.gender});
 
-  person.fromJson(Map<String,dynamic> data)
-        : name = data['name'],
-          age = data['age'],
-          gender= data['gender'];
+  person.fromJsonData(Map<String,dynamic> data)
+      : name = data['name'],
+        age = data['age'],
+        gender = data['gender'],
+        totalKeys = data.keys;
+
+  person.forKeys(Map<String,dynamic> data)
+      : totalKeys=data.keys;
+
+  nameMap(var mydata){
+
+    var nameList= new Map();
+
+    for(int i=0;i<mydata.length;i++){
+      nameList[i]=mydata[i].name;
+    }
+
+    return nameList;
+  }
 }
